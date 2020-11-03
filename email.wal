@@ -1,0 +1,148 @@
+šEdefVar --name gmail --type String --value "rpathompson55@gmail.com"
+defVar --name emailServerConnectionInstance --type EmailConnection
+defVar --name email_Password --type String --value "m+*rHP2P!5[?buFJ"
+defVar --name smtp --type String --value "smtp.gmail.com"
+defVar --name emailMessage --type EmailMessage
+defVar --name emailSubject --type String --value blank
+defVar --name emailBody --type String --value blank
+defVar --name htmlEmailBody --type String
+defVar --name emailFrom --type String
+defVar --name emailTo --type List --innertype String
+defVar --name emailCC --type List --innertype String
+defVar --name emailBCC --type List --innertype String
+defVar --name emailRecievedDate --type DateTime
+defVar --name emailCategories --type List --innertype String
+defVar --name emailHeaders --type StringDictionary --innertype String
+defVar --name smtpHost --type String --value "smtp.gmail.com"
+defVar --name smtpPortt --type Numeric --value 465
+defVar --name email_user --type String --value "rpathompson55@gmail.com"
+defVar --name smtpConnection --type EmailConnection
+defVar --name readMessage --type EmailMessage
+defVar --name downloadList --type List --innertype String
+defVar --name downloadPath --type String
+defVar --name aPDF --type Pdf
+defVar --name aPDFPath --type String
+defVar --name pdfText --type String
+defVar --name pdfFields --type String
+defVar --name pdfSplitFields --type List --innertype String
+defVar --name aPDF_Field --type String
+defVar --name fixed_PDF_Field --type String
+defVar --name line_count --type Numeric
+defVar --name pdf_group --type String
+defVar --name pdfDictionary --type StringDictionary --innertype String
+defVar --name fixed_PDF_Key --type String
+defVar --name dict_entry --type StringDictionary --innertype String
+defVar --name subroutineName --type String --value "Node Demo"
+defVar --name subroutineParamDict --type String --value subroutineParamDict
+defVar --name a_Browser --type Browser
+defVar --name a_value --type String --value "some value"
+defVar --name htmlStatus --type Boolean
+defVar --name formStatus --type String
+defVar --name transform --type DataTable
+defVar --name transform_rows --type Numeric
+defVar --name transform_cols --type Numeric
+defVar --name xform_value --type String
+defVar --name i --type Numeric --value 1
+defVar --name xform_key --type String
+defVar --name n --type Numeric --value 0
+defVar --name m --type Numeric --value 0
+defVar --name transform_rows_i --type Numeric
+defVar --name pdf_repo --type FileSystem
+defVar --name b_value --type String
+defVar --name a_list --type List --innertype String
+readCSV --filepath "C:\\dtt\\WSCC_Demo.csv" --delimiter "," --hasheaders  --encoding "UTF8" --missingfieldaction "ParseError" transform=value transform_rows=rows transform_cols=columns
+webStart --name A_BROWSER --type "Chrome" a_Browser=value
+webNavigate --url "http://localhost:6006"
+// now the email reader
+setVar --name "${transform_rows_i}" --value "${transform_rows}"
+imapConnect --mailhost "imap.gmail.com" --mailport 993 --usessl  --UseConnectionToSend  --smtpcredentials  --smtphost "smtp.gmail.com" --smtpport 587 --smtpusername "${gmail}" --smtppassword "${email_Password}" --smtpusessl  --username "${gmail}" --mailusername "${gmail}" --mailpassword "${email_Password}" emailServerConnectionInstance=value
+setVarIf --variablename "${pdfFields}" --value "\"\"" --left true --operator "Equal_To" --right true
+foreach --collection "${emailServerConnectionInstance}" --variable "${emailMessage}"
+	incrementVar --number ${n}
+	logMessage --message "reading email #${n}" --type "Info"
+	emailRead --message ${emailMessage} emailSubject=subject emailBody=body htmlEmailBody=htmlbody emailFrom=from emailTo=to emailCC=cc emailBCC=bcc emailRecievedDate=receiveddate emailHeaders=headers emailCategories=labels
+	logMessage --message "email # ${n} subject is ${emailSubject}" --type "Info"
+	setVar --name "${m}" --value 0
+	emailGetAttachment --outputpath "C:\\dtt\\attachments" --message ${emailMessage} downloadList=value
+	foreach --collection "${downloadList}" --variable "${downloadPath}"
+		incrementVar --number ${m}
+		logMessage --message "File # ${m} download path is ${aPDFPath} and other download path is ${downloadPath}" --type "Info"
+		pdfOpen --file "${downloadPath}" aPDF=value aPDFPath=file
+		pdfDump --file ${aPDF} pdfFields=value
+		splitString --text "${pdfFields}" --delimiteroption "StandardDelimiter" --standarddelimiter "NewLine" --count 100 pdfSplitFields=value
+		foreach --collection "${pdfSplitFields}" --variable "${aPDF_Field}"
+			if --left "${aPDF_Field}" --operator "Is_Empty" --negate 
+				incrementVar --number ${line_count}
+				getRegex --text "${aPDF_Field}" --regexPattern "(^.*) \\= .*" --regexOptions "IgnoreCase, Singleline" --groupnumber 1 fixed_PDF_Key=value
+				getRegex --text "${aPDF_Field}" --regexPattern "^.[^=]*..(.*)" --regexOptions "IgnoreCase, Singleline" --groupnumber 1 fixed_PDF_Field=value
+				setVarIf --variablename "${fixed_PDF_Field}" --value "\"\"" --left "${fixed_PDF_Field}" --operator "Is_Empty"
+				//logMessage --message "key = \"${fixed_PDF_Key}\" - value = \"${fixed_PDF_Field}\"" --type "Info"
+				strDictAdd --key "${fixed_PDF_Key}" --value "${fixed_PDF_Field}" --dictionary ${pdfDictionary}
+				strDictGet --key "${fixed_PDF_Key}" --dictionary ${pdfDictionary} a_value=value
+				//logMessage --message "key = \"${fixed_PDF_Key}\" - value = \"${fixed_PDF_Field}\" AND LOOKUP ${a_value}" --type "Info"
+			else
+				//logMessage --message "key = \"${fixed_PDF_Key}\" - value = \"${fixed_PDF_Field}\" Was EMPTY" --type "Info"
+			endIf
+			//	logMessage --message "${line_count} - ${aPDF_Field} / ${fixed_PDF_Field}" --type "Info"
+		endFor
+		//		messageBox --title "message Box" --text "${pdfFields}${pdfText}" --icon "Information" --buttons "OK" --defaultbutton "FirstButton"
+		// logMessage --message "${pdfFields}" --type "Info"
+	endFor
+	
+	setVar --name "${i}" --value 1
+	setVar --name "${transform_rows_i}" --value "${transform_rows}"
+	for --variable ${transform_rows_i} --from ${transform_rows_i} --to 1 --step -1
+		getTableCell --dataTable ${transform} --column 2 --row ${i} xform_value=value
+		getTableCell --dataTable ${transform} --column 1 --row ${i} xform_key=value
+		if --left "${xform_value}" --operator "Equal_To" --right NA --negate 
+			//logMessage --message "${i} - key= |${xform_key}|  value_pair |${xform_value}| a_value=|${a_value}|" --type "Info"
+			strDictGet --key "${xform_key}" --dictionary ${pdfDictionary} a_value=value
+			//logMessage --message "|${dict_entry}| and |${a_value}|" --type "Info"
+			//	webSet --value "${a_value}" --selector "CssSelector" --css "${xform_value}"
+		endIf
+		incrementVar --number ${i}
+	next
+	//foreach --collection "${pdfDictionary}" --variable "${a_value}"
+	//getRegex --text "${a_value}" --regexPattern ".([^,]*),.*" --regexOptions "IgnoreCase" --groupnumber 1 b_value=value
+	//logMessage --message "!!! ${b_value}" --type "Info"
+	//endFor
+	goSub --label FillForm
+	deleteFromDirectory --directory "C:\\dtt\\attachments" --fileSystem ${pdf_repo}
+endFor
+
+
+//webClose --name A_BROWSER
+
+
+
+beginSub --name FillForm
+logMessage --message "Opened the Browser now go through transform table / Rows = ${transform_rows}/ Cols = ${transform_cols}" --type "Info"
+setVar --name "${i}" --value 1
+setVar --name "${transform_rows_i}" --value "${transform_rows}"
+for --variable ${transform_rows_i} --from ${transform_rows_i} --to 1 --step -1
+	getTableCell --dataTable ${transform} --column 2 --row ${i} xform_value=value
+	getTableCell --dataTable ${transform} --column 1 --row ${i} xform_key=value
+	if --left "${xform_value}" --operator "Equal_To" --right NA --negate 
+		logMessage --message "${i} - ${xform_key} / ${xform_value}" --type "Info"
+		strDictGet --key "${xform_key}" --dictionary ${pdfDictionary} a_value=value
+		if --left "${xform_key}" --operator "Equal_To" --right "Print_Full_Name_ecxnfjb-cWGcpwYFQlKF0w"
+			getRegex --text "${a_value}" --regexPattern "^[^ ]* (.*)" --regexOptions "IgnoreCase" --groupnumber 1 b_value=value
+			getRegex --text "${a_value}" --regexPattern "^([^ ]*).*" --regexOptions "IgnoreCase" --groupnumber 1 a_value=value
+			
+			
+			
+			webSet --value "${b_value}" --selector "CssSelector" --css "#lnam"
+			
+		endIf
+		webSet --value "${a_value}" --selector "CssSelector" --css "${xform_value}"
+	endIf
+	incrementVar --number ${i}
+next
+webClick --selector "CssSelector" --css "#formaction > div:nth-child(8) > div > input[type=submit]"
+delay --timeout 00:00:00.5000000
+webWaitElement --selector "CssSelector" --css "#status" htmlStatus=value
+webGet --selector "CssSelector" --css "#status" formStatus=value
+logMessage --message "Status is ${formStatus}" --type "Info"
+delay --timeout 00:00:20
+
+endSub*20.7.3.0

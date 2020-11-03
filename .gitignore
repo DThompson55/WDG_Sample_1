@@ -1,3 +1,7 @@
+
+# WDG artifacts
+*.wad
+
 # Logs
 logs
 *.log
